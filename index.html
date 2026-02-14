@@ -1821,5 +1821,37 @@ function setAdminTab(tab){
   });
 })();
 </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    onSnapshot, 
+    doc, 
+    updateDoc 
+  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
+    authDomain: "promo-stock.firebaseapp.com",
+    projectId: "promo-stock",
+    storageBucket: "promo-stock.firebasestorage.app",
+    messagingSenderId: "663337065636",
+    appId: "1:663337065636:web:672590dddb96f633b41a31"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.db = db; // żeby było globalne
+  window.fb = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc };
+</script>
+
+
+  
 </body>
 </html>
+
