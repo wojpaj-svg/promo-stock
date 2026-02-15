@@ -1117,6 +1117,26 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const byId = (id) => state.items.find(x => x.id === id);
 
+
+function guessIconForName(name){
+  const n = String(name||"").toLowerCase();
+
+  if (n.includes("lanyard")) return "lanyard";
+  if (n.includes("mug")) return "mug";
+  if (n.includes("pen")) return "pen";
+  if (n.includes("tote") || n.includes("bag")) return "bag";
+
+  // dodaj swoje reguły:
+  if (n.includes("hoodie")) return "hoodie";
+  if (n.includes("cap")) return "cap";
+  if (n.includes("bottle")) return "bottle";
+  if (n.includes("tshirt") || n.includes("t-shirt")) return "tshirt";
+
+  return "box";
+}
+
+  
+
   // =============================
 // FIRESTORE SYNC (REALTIME)
 // =============================
@@ -1142,6 +1162,27 @@ function startFirestore(){
 
     items.sort((a,b)=> (a.order??999) - (b.order??999));
     state.items = items;
+
+    // ✅ one-time self-heal: if icon missing -> infer and save to Firestore
+(async ()=>{
+  const { doc, updateDoc } = window.fb;
+  const db = window.db;
+
+  for (const it of items){
+    // brak pola icon w dokumencie albo puste
+    if (!it.icon || it.icon === "box"){
+      const inferred = guessIconForName(it.name);
+      if (inferred !== "box"){
+        try{
+          await updateDoc(doc(db, "items", it.id), { icon: inferred });
+        }catch(e){
+          console.warn("Icon backfill failed for", it.id, e);
+        }
+      }
+    }
+  }
+})();
+
 
     // odśwież UI po zmianie items
     renderKiosk();
@@ -1968,6 +2009,7 @@ const waitFb = setInterval(() => {
   
 </body>
 </html>
+
 
 
 
