@@ -336,26 +336,102 @@ height:35px;          /* <- dodaj */
     }
 
 /* ✅ SUPER-MOBILE: kiosk układa się pionowo, nic się nie łamie */
-@media (max-width: 420px){
-  .kRow{ grid-template-columns: 1fr; gap:10px; }
-  .kNameLine{ grid-template-columns: 1fr; gap:8px; }
+/* ✅ MOBILE: kiosk jak admin (ikona + nazwa + remaining w 1. rzędzie) */
+@media (max-width: 520px){
 
-  /* pills pod nazwą */
-  .kRemainBox{ align-items:flex-start; }
-
-  /* zamiast sztywnego 160px */
-  .kRemain, .kReorder{
-    width:100%;
-    max-width:220px;
-    justify-content:flex-start;
-    text-align:left;
+  /* 1) NIE składamy całej kRow do jednej kolumny — zostaje jak desktop:
+        lewa strona (nazwa/pille) + prawa strona (kontrolki) */
+  .kRow{
+    grid-template-columns: 1fr;
+    gap:12px;
   }
 
-  .kControls{ justify-content:flex-start; flex-wrap:wrap; gap:8px; }
+  /* 2) Nagłówek itemu: nazwa + remaining w jednym rzędzie */
+  .kNameLine{
+    grid-template-columns: 1fr 140px; /* nazwa | pill remaining */
+    align-items:center;
+    gap:10px;
+  }
 
-  /* żeby chipy +1/+5/+10 miały sensowną szerokość i nie robiły chaosu */
-  .qbtn{ flex: 1 1 72px; text-align:center; }
+  .kName{
+    font-size:18px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* 3) Remaining + reorder: remaining po prawej, reorder pod spodem (opcjonalnie) */
+  .kRemainBox{
+    justify-self:end;
+    align-items:flex-end;
+    gap:6px;
+  }
+
+  .kRemain,
+  .kReorder{
+    width:140px;
+    justify-content:center;
+    text-align:center;
+  }
+
+  /* 4) Kontrolki: rozbijamy na 2 rzędy:
+        - rząd A: minus, qty, plus
+        - rząd B: +1 +5 +10 +20 */
+  .kControls{
+    display:grid;
+    grid-template-columns: 44px 1fr 44px;
+    grid-auto-rows:auto;
+    gap:8px;
+    justify-content:stretch;
+    align-items:center;
+  }
+
+  .kControls .btn.icon[data-dec]{ grid-column:1; }
+  .kControls .qty{ grid-column:2; width:100%; }
+  .kControls .btn.icon[data-inc]{ grid-column:3; }
+
+  /* +1/+5/+10/+20 idą pod spodem w siatce 2x2 */
+  .kControls .qbtn{
+    grid-column: 1 / -1;
+  }
+
+  /* robimy 2 kolumny na quick buttons */
+  .kControls .qbtn[data-add="1"],
+  .kControls .qbtn[data-add="5"],
+  .kControls .qbtn[data-add="10"],
+  .kControls .qbtn[data-add="20"]{
+    grid-column:auto;
+  }
+
+  /* ustawiamy quick buttons jako grid 2x2 */
+  .kControls{
+    grid-template-areas:
+      "dec qty inc"
+      "q1  q5  q10"
+      "q20 q20 q20";
+  }
+
+  .kControls .btn.icon[data-dec]{ grid-area: dec; }
+  .kControls .qty{ grid-area: qty; }
+  .kControls .btn.icon[data-inc]{ grid-area: inc; }
+
+  .kControls .qbtn[data-add="1"]{ grid-area: q1; }
+  .kControls .qbtn[data-add="5"]{ grid-area: q5; }
+  .kControls .qbtn[data-add="10"]{ grid-area: q10; }
+  .kControls .qbtn[data-add="20"]{
+    grid-area: q20;
+    width:100%;
+    text-align:center;
+  }
+
+  .qbtn{
+    width:100%;
+    text-align:center;
+    padding:10px 10px;
+    font-size:13px;
+  }
 }
+
 
 
     label{
@@ -2158,6 +2234,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
