@@ -1075,6 +1075,27 @@ letter-spacing:.2px;
   border-color: rgba(125,180,66,.30);
 }
 
+    /* ✅ HARD FIX: Admin tabs must always show BOTH buttons */
+.tabsSmall{
+  display:flex !important;
+  gap:8px !important;
+  flex-wrap:nowrap !important;
+  overflow:visible !important;
+}
+
+.tabsSmall .tab{
+  display:inline-flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  position:static !important;
+  transform:none !important;
+}
+
+/* jeśli gdzieś przypadkiem była reguła chowająca nieaktywną zakładkę */
+.tabsSmall .tab:not(.active){
+  display:inline-flex !important;
+}
+
     
   </style>
 </head>
@@ -2433,6 +2454,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
