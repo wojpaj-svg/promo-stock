@@ -335,87 +335,104 @@ height:35px;          /* <- dodaj */
       .kNameLine{ grid-template-columns: clamp(100px, 38vw, 150px) 140px; }
     }
 
-/* ✅ SUPER-MOBILE: kiosk układa się pionowo, nic się nie łamie */
-/* ✅ MOBILE: kiosk jak admin (ikona + nazwa + remaining w 1. rzędzie) */
-/* ✅ SUPER-MOBILE: kiosk jak Admin (tylko telefon) */
+/* ✅ PHONE: header w 1 linii (icon + name + remaining), controls w 1 linii pod spodem */
+.kIcoInline{ display:none; } /* default: desktop ukrywa inline icon */
+
 @media (max-width: 420px){
 
-  /* 1) Cały item: nie zmieniamy desktopu, tylko mobile */
+  /* 0) item: usuwamy lewą kolumnę (bo side-icon chowamy) */
   .item{
-    /* było: grid-template-columns: 54px 1fr; align-items:center; */
+    grid-template-columns: 1fr;   /* było 54px 1fr */
     align-items:start;
   }
 
-  /* 2) kRow robi się pionowy: header + controls */
+  /* 1) desktopowa ikonka po lewej znika na telefonie */
+  .kIcoSide{ display:none !important; }
+
+  /* 2) telefonowa ikonka w nagłówku włącza się */
+  .kIcoInline{
+    display:grid !important;
+    width:54px;
+    height:54px;
+    border-radius:18px;
+    background:#fff;
+    border:1px solid var(--border);
+    place-items:center;
+  }
+
+  /* 3) kRow = 2 wiersze: nagłówek + kontrolki */
   .kRow{
     grid-template-columns: 1fr;
     gap:10px;
     align-items:start;
   }
 
-  /* 3) Header: IKONA + NAZWA + REMAINING (jak w Admin) */
+  /* 4) nagłówek w jednej linii: icon | name | remaining */
   .kNameLine{
-    /* nadpisujemy Twoje mobile: grid-template-columns: 1fr; */
     display:grid;
-    grid-template-columns: 54px 1fr auto; /* icon | name | remaining */
+    grid-template-columns: 54px 1fr auto;
     align-items:center;
     gap:12px;
+    min-width:0;
   }
 
-  /* 4) Ikona ma być “w nagłówku”, nie niżej */
-  .item .ico{
-    grid-column:1;
-    grid-row:1;
-    align-self:center;
-  }
-
-  /* 5) Nazwa w środku */
   .kName{
-    grid-column:2;
-    grid-row:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
     margin:0;
-    font-size:18px;
-    line-height:1.05;
   }
 
-  /* 6) Remaining + Reorder w prawej kolumnie, wyrównane jak pill */
+  /* remaining po prawej (i ewentualny reorder pod nim) */
   .kRemainBox{
-    grid-column:3;
-    grid-row:1;
     justify-self:end;
     align-items:flex-end;
     gap:6px;
   }
-
   .kRemain, .kReorder{
-    width:auto;            /* było 100% / max-width */
-    min-width:140px;       /* trzyma “kolumnę” jak w adminie */
+    width:auto;
+    min-width:140px;
     justify-content:center;
     text-align:center;
-    max-width:none;
   }
 
-  /* 7) Controls pod spodem, na pełną szerokość */
+  /* 5) kontrolki w JEDNEJ linii: − 0 + +5 +10 +20 */
   .kControls{
-    justify-content:flex-start;
-    flex-wrap:wrap;
+    display:grid;
+    grid-template-columns: 44px 64px 44px 1fr 1fr 1fr;
     gap:8px;
+    align-items:center;
+    justify-content:stretch;
   }
 
-  /* 8) +1 ukrywamy na telefonie (zostają +5 +10 +20) */
-  .kControls .qbtn[data-add="1"]{
-    display:none !important;
+  /* przyciski minus/plus */
+  .btn.icon{
+    width:44px;
+    height:44px;
   }
 
-  /* 9) Żeby przyciski szybkie były równe i nie robiły “chaosu” */
-  .kControls .qbtn{
-    flex: 1 1 90px;
-    text-align:center;
+  /* pole qty */
+  .qty{
+    min-width:64px;
+    height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
   }
 
-  /* 10) (opcjonalnie) -0+ trochę ciaśniej */
-  .btn.icon{ width:44px; height:44px; }
-  .qty{ min-width:64px; }
+  /* szybkie +5/+10/+20 jako małe “ikonki” (równa wysokość) */
+  .qbtn{
+    height:44px;
+    padding:0 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:14px;
+    font-size:13px;
+    font-weight:950;
+  }
 }
 
 
@@ -1529,10 +1546,12 @@ function renderKiosk(){
     el.dataset.itemId = it.id;
 
     el.innerHTML = `
-      <div class="ico">${iconSvg(it.icon)}</div>
+     <div class="ico kIcoSide">${iconSvg(it.icon)}</div>
+
       <div>
         <div class="kRow">
-          <div class="kNameLine">
+      <div class="kNameLine">
+  <div class="ico kIcoInline">${iconSvg(it.icon)}</div>
   <p class="kName">${it.name}</p>
 
   <div class="kRemainBox">
@@ -1540,6 +1559,7 @@ function renderKiosk(){
     ${low ? `<span class="pill low kReorder">Reorder ≤ ${it.threshold}</span>` : ``}
   </div>
 </div>
+
 
 
           <div class="kControls">
@@ -2221,6 +2241,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
