@@ -1790,19 +1790,13 @@ row.classList.remove("hasDelivery");
 
     });
 
-    row.querySelector("[data-del]").addEventListener("click", ()=>{
-     row.querySelector("[data-del]").addEventListener("click", async ()=>{
+ row.querySelector("[data-del]").addEventListener("click", async ()=>{
   const { deleteDoc, doc, addDoc, collection } = window.fb;
   const db = window.db;
 
   const itemName = it.name;
-  const ok = confirm(`Delete "${itemName}" permanently?`);
-  if (!ok) return;
 
-  // usuń item
-  await deleteDoc(doc(db, "items", it.id));
-
-  // zapisz event
+  // używamy Twojego modala zamiast confirm()
   const ev = {
     id: crypto.randomUUID(),
     type: "item_deleted",
@@ -1811,16 +1805,26 @@ row.classList.remove("hasDelivery");
     lines: [{ itemId: it.id, qty: 0 }]
   };
 
-  await addDoc(collection(db, "events"), ev);
+  const chips = `<span class="line">${itemName}<span class="delta">deleted</span></span>`;
 
-  flash(`"${itemName}" deleted.`);
+  openModal({
+    tagText:"DELETE ITEM",
+    tagClass:"taken",
+    linesHTML:chips,
+    tsText: fmtDT(ev.ts),
+    noteText: `This will permanently remove "${itemName}" from inventory.`,
+    canUndo:false,
+    onUndo:null
+  });
+
+  $("#mSaved").onclick = async ()=>{
+    await deleteDoc(doc(db, "items", it.id));
+    await addDoc(collection(db, "events"), ev);
+    closeModal();
+    flash(`"${itemName}" deleted.`);
+  };
 });
 
-
-
-
-      openModal({ tagText:"DELETE", tagClass:"taken", linesHTML:chips, noteText:noteLine, canUndo:true, onUndo:state.undo.onUndo });
-    });
   });
 
   renderHistoryFilters();
@@ -2259,6 +2263,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
