@@ -503,7 +503,32 @@ margin-bottom:5px;
 
 
     /* Admin */
-    .tabsSmall{ margin-bottom:12px; }
+    /* Admin */
+.tabsSmall{ margin-bottom:12px; }
+
+/* ✅ Admin tabs: osobne kolory (bo na białym tle “headerowe” taby znikają) */
+#adminView .tabs.tabsSmall{
+  background: #f3f6f9;
+  border: 1px solid var(--border);
+  padding: 6px;
+  border-radius: 999px;
+  box-shadow: none;
+  backdrop-filter: none; /* opcjonalnie: czyściej na białym */
+}
+
+#adminView .tabs.tabsSmall .tab{
+  color: var(--muted);      /* ✅ widoczne na białym */
+  font-weight: 950;
+}
+
+#adminView .tabs.tabsSmall .tab.active{
+  background: #fff;
+  color: var(--text);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+}
+
+    
     .adminList{display:flex; flex-direction:column; gap:10px;}
 
   .adminRow{
@@ -2454,6 +2479,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
