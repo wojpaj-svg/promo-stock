@@ -335,7 +335,6 @@ height:35px;          /* <- dodaj */
       .kNameLine{ grid-template-columns: clamp(100px, 38vw, 150px) 140px; }
     }
 
-
 /* ✅ SUPER-MOBILE: kiosk układa się pionowo, nic się nie łamie */
 @media (max-width: 420px){
   .kRow{ grid-template-columns: 1fr; gap:10px; }
@@ -1068,21 +1067,17 @@ letter-spacing:.2px;
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  onSnapshot, 
-  doc, 
-  updateDoc,
-  increment,
-  setDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  limit
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    onSnapshot, 
+    doc, 
+    updateDoc,
+    increment,
+    setDoc,
+    deleteDoc
+  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
@@ -1097,11 +1092,7 @@ letter-spacing:.2px;
   const db = getFirestore(app);
 
   window.db = db;
-window.fb = { 
-  collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc,
-  query, orderBy, limit
-};
-
+window.fb = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc };
 
 </script>
 
@@ -1123,7 +1114,7 @@ const byId = (id) => state.items.find(x => x.id === id);
 // FIRESTORE SYNC (REALTIME)
 // =============================
 function startFirestore(){
-  const { collection, onSnapshot, query, orderBy, limit } = window.fb;
+  const { collection, onSnapshot } = window.fb;
   const db = window.db;
 
   // realtime items
@@ -1135,48 +1126,25 @@ function startFirestore(){
         id: d.id,
         name: data.name ?? d.id,
         icon: data.icon ?? "box",
-        stock: Number(data.remaining ?? 0),
+        stock: Number(data.remaining ?? 0),     // ✅ mapujemy Firestore.remaining -> UI.stock
         threshold: Number(data.threshold ?? 0),
         active: Boolean(data.active ?? true),
         order: Number(data.order ?? 999),
       });
     });
 
+    // sort
     items.sort((a,b)=> (a.order??999) - (b.order??999));
+
     state.items = items;
 
-    // odśwież UI po zmianie items
+    // odśwież UI
     renderKiosk();
     renderAdmin();
     renderHistoryFilters();
     renderHistory();
   });
-
-  // realtime events (history)
-  onSnapshot(
-    query(collection(db, "events"), orderBy("ts", "desc"), limit(500)),
-    (snap) => {
-      const evs = [];
-      snap.forEach(d => {
-        const data = d.data() || {};
-        evs.push({
-          ...data,
-          _docId: d.id,
-          id: data.id ?? d.id,
-          ts: data.ts ?? nowISO(),
-          lines: Array.isArray(data.lines) ? data.lines : []
-        });
-      });
-
-      state.events = evs;
-
-      // odśwież UI historii po zmianie events
-      renderHistoryFilters();
-      renderHistory();
-    }
-  );
 }
-
 
 
 function nowISO(){ return new Date().toISOString(); }
@@ -1384,31 +1352,34 @@ function renderKiosk(){
     el.className = "item";
     el.dataset.itemId = it.id;
 
-el.innerHTML = `
-  <div class="kTop">
-    <div class="kLeft">
+    el.innerHTML = `
       <div class="ico">${iconSvg(it.icon)}</div>
-      <p class="kName">${it.name}</p>
-    </div>
+      <div>
+        <div class="kRow">
+          <div class="kNameLine">
+  <p class="kName">${it.name}</p>
 
-    <div class="kRight">
-      <span class="pill kRemain">${it.stock} remaining</span>
-      ${low ? `<span class="pill low kReorder">Reorder ≤ ${it.threshold}</span>` : ``}
-    </div>
+  <div class="kRemainBox">
+    <span class="pill kRemain">${it.stock} remaining</span>
+    ${low ? `<span class="pill low kReorder">Reorder ≤ ${it.threshold}</span>` : ``}
   </div>
+</div>
 
-  <div class="kControls">
-    <button class="btn icon" data-dec title="Decrease">−</button>
-    <div class="qty" data-qty>0</div>
-    <button class="btn icon" data-inc title="Increase">+</button>
 
-    <button class="qbtn" data-add="1">+1</button>
-    <button class="qbtn" data-add="5">+5</button>
-    <button class="qbtn" data-add="10">+10</button>
-    <button class="qbtn" data-add="20">+20</button>
-  </div>
-`;
+          <div class="kControls">
+            <button class="btn icon" data-dec title="Decrease">−</button>
+            <div class="qty" data-qty>0</div>
+            <button class="btn icon" data-inc title="Increase">+</button>
+            <button class="qbtn" data-add="1">+1</button>
+            <button class="qbtn" data-add="5">+5</button>
+            <button class="qbtn" data-add="10">+10</button>
+            <button class="qbtn" data-add="20">+20</button>
+          </div>
+        </div>
 
+        
+      </div>
+    `;
 
     wrap.appendChild(el);
   });
@@ -1967,9 +1938,6 @@ const waitFb = setInterval(() => {
   
 </body>
 </html>
-
-
-
 
 
 
