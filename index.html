@@ -1114,7 +1114,7 @@ const byId = (id) => state.items.find(x => x.id === id);
 // FIRESTORE SYNC (REALTIME)
 // =============================
 function startFirestore(){
-  const { collection, onSnapshot } = window.fb;
+  const { collection, onSnapshot, query, orderBy, limit } = window.fb;
   const db = window.db;
 
   // realtime items
@@ -1126,25 +1126,48 @@ function startFirestore(){
         id: d.id,
         name: data.name ?? d.id,
         icon: data.icon ?? "box",
-        stock: Number(data.remaining ?? 0),     // ✅ mapujemy Firestore.remaining -> UI.stock
+        stock: Number(data.remaining ?? 0),
         threshold: Number(data.threshold ?? 0),
         active: Boolean(data.active ?? true),
         order: Number(data.order ?? 999),
       });
     });
 
-    // sort
     items.sort((a,b)=> (a.order??999) - (b.order??999));
-
     state.items = items;
 
-    // odśwież UI
+    // odśwież UI po zmianie items
     renderKiosk();
     renderAdmin();
     renderHistoryFilters();
     renderHistory();
   });
+
+  // realtime events (history)
+  onSnapshot(
+    query(collection(db, "events"), orderBy("ts", "desc"), limit(500)),
+    (snap) => {
+      const evs = [];
+      snap.forEach(d => {
+        const data = d.data() || {};
+        evs.push({
+          ...data,
+          _docId: d.id,
+          id: data.id ?? d.id,
+          ts: data.ts ?? nowISO(),
+          lines: Array.isArray(data.lines) ? data.lines : []
+        });
+      });
+
+      state.events = evs;
+
+      // odśwież UI historii po zmianie events
+      renderHistoryFilters();
+      renderHistory();
+    }
+  );
 }
+
 
 
 function nowISO(){ return new Date().toISOString(); }
@@ -1938,6 +1961,7 @@ const waitFb = setInterval(() => {
   
 </body>
 </html>
+
 
 
 
