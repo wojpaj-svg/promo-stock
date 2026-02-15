@@ -1067,17 +1067,20 @@ letter-spacing:.2px;
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs, 
-    onSnapshot, 
-    doc, 
-    updateDoc,
-    increment,
-    setDoc,
-    deleteDoc
-  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  onSnapshot, 
+  doc, 
+  updateDoc,
+  increment,
+  setDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  limit
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
@@ -1092,7 +1095,11 @@ letter-spacing:.2px;
   const db = getFirestore(app);
 
   window.db = db;
-window.fb = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc };
+window.fb = { 
+  collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc,
+  query, orderBy, limit
+};
+
 
 </script>
 
@@ -1961,6 +1968,7 @@ const waitFb = setInterval(() => {
   
 </body>
 </html>
+
 
 
 
