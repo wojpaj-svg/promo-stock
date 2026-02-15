@@ -1188,7 +1188,7 @@ letter-spacing:.2px;
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-  import { 
+ import { 
   getFirestore, 
   collection, 
   addDoc, 
@@ -1204,6 +1204,7 @@ letter-spacing:.2px;
   limit
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+
   const firebaseConfig = {
     apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
     authDomain: "promo-stock.firebaseapp.com",
@@ -1218,9 +1219,10 @@ letter-spacing:.2px;
 
   window.db = db;
 window.fb = { 
-  collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc,
+  collection, addDoc, getDocs, getDoc, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc,
   query, orderBy, limit
 };
+
 
 
 </script>
@@ -1954,23 +1956,57 @@ function updateSelCount(){
   $("#selCount").textContent = `${state.selectedEventDocIds.size} selected`;
 }
 
+  async function archiveEventDoc(eventDocId, reason="admin_archive"){
+  const { doc, getDoc, setDoc, deleteDoc } = window.fb;
+  const db = window.db;
+
+  const srcRef = doc(db, "events", eventDocId);
+  const snap = await getDoc(srcRef);
+  if (!snap.exists()) return false;
+
+  const data = snap.data() || {};
+
+  // zachowujemy to samo ID dokumentu w archiwum (łatwiej odnajdywać)
+  const dstRef = doc(db, "events_archive", eventDocId);
+
+  await setDoc(dstRef, {
+    ...data,
+    _archivedFrom: "events",
+    archivedAt: nowISO(),
+    archivedReason: reason
+  });
+
+  // dopiero po udanym zapisie do archiwum kasujemy z events
+  await deleteDoc(srcRef);
+  return true;
+}
+
+
+  
 async function deleteSelectedEvents(){
   const n = state.selectedEventDocIds.size;
   if (!n){ flash("Select events first."); return; }
 
-  const ok = confirm(`Delete ${n} selected event(s) permanently?`);
+  const ok = confirm(`Archive ${n} selected event(s)? They will disappear from History but stay in Firebase (events_archive).`);
   if (!ok) return;
 
-  const { deleteDoc, doc } = window.fb;
-  const db = window.db;
+  const ids = [...state.selectedEventDocIds];
 
-  // kasujemy z Firestore
-  await Promise.all([...state.selectedEventDocIds].map(id => deleteDoc(doc(db, "events", id))));
+  let okCount = 0;
+  for (const id of ids){
+    try{
+      const done = await archiveEventDoc(id, "admin_delete_selected");
+      if (done) okCount++;
+    }catch(e){
+      console.warn("Archive failed for", id, e);
+    }
+  }
 
   state.selectedEventDocIds.clear();
   updateSelCount();
-  flash("Selected events deleted.");
+  flash(`Archived ${okCount}/${n} event(s).`);
 }
+
 
 function renderHistoryFilters(){
   const sel = $("#filterItem");
@@ -2140,30 +2176,30 @@ function downloadCSV(){
 }
 
 async function clearAllEvents(){
-  const ok = confirm("This will permanently delete ALL history (events). Continue?");
+  const ok = confirm("This will archive ALL history (events) and clear it from the app. Continue?");
   if (!ok) return;
 
-  const { collection, getDocs, query, limit, deleteDoc, doc } = window.fb;
+  const { collection, getDocs, query, limit } = window.fb;
   const db = window.db;
 
   let total = 0;
 
-  // Firestore nie ma "delete collection" – kasujemy dokumenty partiami
   while (true){
     const snap = await getDocs(query(collection(db, "events"), limit(500)));
     if (snap.empty) break;
 
-    const deletions = [];
+    const archives = [];
     snap.forEach(d => {
-      deletions.push(deleteDoc(doc(db, "events", d.id)));
+      archives.push(archiveEventSnap(d, "admin_clear_all"));
     });
 
-    await Promise.all(deletions);
-    total += deletions.length;
+    await Promise.all(archives);
+    total += archives.length;
   }
 
-  flash(`History cleared (${total} events deleted).`);
+  flash(`History archived (${total} events moved to events_archive).`);
 }
+
 
   
 function adminUnlock(){
@@ -2263,6 +2299,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
