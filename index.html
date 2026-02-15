@@ -1893,9 +1893,15 @@ function setAdminTab(tab){
 (function init(){
   $("#newIcon").innerHTML = ICONS.map(([k,label])=>`<option value="${k}">${label}</option>`).join("");
 
-    startFirestore(); // ✅ odpala realtime z Firestore
+ // ✅ czekamy aż Firebase module ustawi window.db i window.fb
+const waitFb = setInterval(() => {
+  if (window.db && window.fb){
+    clearInterval(waitFb);
+    startFirestore();      // dopiero teraz jest bezpieczne
+    setMode("kiosk");      // możesz ustawić tryb po starcie FS
+  }
+}, 50);
 
-  setMode("kiosk");
 
   $("#btnKiosk").addEventListener("click", ()=>setMode("kiosk"));
   $("#btnAdmin").addEventListener("click", ()=>setMode("admin"));
@@ -1932,6 +1938,7 @@ function setAdminTab(tab){
   
 </body>
 </html>
+
 
 
 
