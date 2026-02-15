@@ -679,6 +679,29 @@ margin-bottom:5px;
       padding:12px;
       background:#fff;
     }
+
+.event{
+  position:relative;
+}
+
+.event.selectMode{
+  padding-left:44px; /* miejsce na checkbox */
+}
+
+.evChk{
+  position:absolute;
+  left:14px;
+  top:14px;
+  width:18px;
+  height:18px;
+}
+
+.event.isSelected{
+  border-color: rgba(125,180,66,.45);
+  box-shadow: 0 0 0 2px rgba(125,180,66,.08);
+}
+
+    
     .eventHead{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
     .eventTitle{margin:0; font-weight:1000; font-size:14px}
     .eventMeta{
@@ -1004,6 +1027,14 @@ letter-spacing:.2px;
       <!-- HISTORY -->
       <div id="historyPanel" style="display:none;">
         <div class="historyTop">
+
+ <div id="delBar" style="display:none; margin-bottom:10px; gap:10px; align-items:center; justify-content:flex-end;">
+  <span id="selCount" class="eventMeta" style="margin-right:auto;">0 selected</span>
+  <button class="btn" id="selAllBtn">Select all</button>
+  <button class="btn" id="delSelBtn">Delete selected</button>
+  <button class="btn ghost" id="delCancelBtn">Cancel</button>
+</div>
+          
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <select id="filterType" style="max-width:220px;">
               <option value="all">All actions</option>
@@ -1014,12 +1045,14 @@ letter-spacing:.2px;
             </select>
             <select id="filterItem" style="max-width:260px;"></select>
           </div>
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+  <button class="btn" id="csvBtn">Download CSV</button>
+  <button class="btn" id="delModeBtn">Delete history</button>
+  <button class="btn primary" id="printBtn">Print / Save PDF</button>
+</div>
 
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn" id="csvBtn">Download CSV</button>
-            <button class="btn primary" id="printBtn">Print / Save PDF</button>
-          </div>
-        </div>
+</div>
+
 
         <div class="printHeader" id="printHeader"></div>
         <div class="printTableWrap">
@@ -1038,6 +1071,10 @@ letter-spacing:.2px;
 
         <div class="history" id="history"></div>
       </div>
+
+       
+
+        
     </section>
   </div>
 
@@ -1106,11 +1143,16 @@ window.fb = {
   
 <script>
 const state = {
-  items: [],          // ✅ teraz źródłem prawdy jest Firestore
+  items: [],
   events: [],
   undo: { timer:null, event:null, expiresAt:0, onUndo:null },
   adminUnlocked: false,
+
+  // ✅ history delete mode
+  historySelectMode: false,
+  selectedEventDocIds: new Set(),
 };
+
 
 
 const $ = (s) => document.querySelector(s);
@@ -1681,6 +1723,9 @@ row.classList.remove("hasDelivery");
   });
 
   renderHistoryFilters();
+
+
+  
   renderHistory();
 }
 
@@ -1789,6 +1834,38 @@ openModal({
 });
 }
 
+  function setHistorySelectMode(on){
+  state.historySelectMode = !!on;
+  if (!on) state.selectedEventDocIds.clear();
+
+  // UI
+  $("#delBar").style.display = on ? "flex" : "none";
+  $("#delModeBtn").textContent = on ? "Delete mode ON" : "Delete history";
+
+  renderHistory(); // przerysuj listę z checkboxami / bez
+}
+
+function updateSelCount(){
+  $("#selCount").textContent = `${state.selectedEventDocIds.size} selected`;
+}
+
+async function deleteSelectedEvents(){
+  const n = state.selectedEventDocIds.size;
+  if (!n){ flash("Select events first."); return; }
+
+  const ok = confirm(`Delete ${n} selected event(s) permanently?`);
+  if (!ok) return;
+
+  const { deleteDoc, doc } = window.fb;
+  const db = window.db;
+
+  // kasujemy z Firestore
+  await Promise.all([...state.selectedEventDocIds].map(id => deleteDoc(doc(db, "events", id))));
+
+  state.selectedEventDocIds.clear();
+  updateSelCount();
+  flash("Selected events deleted.");
+}
 
 function renderHistoryFilters(){
   const sel = $("#filterItem");
@@ -1850,20 +1927,26 @@ return `<span class="line">${name}<span class="delta ${deltaClass}">${delta}</sp
 
       }).join("");
 
-    return `
-      <div class="event">
-        <div class="eventHead">
-          <div>
-  <p class="eventTitle">${label}</p>
-  <div class="eventMeta">${fmtDT(ev.ts)}</div>
-  ${note ? `<div class="eventNote">${note}</div>` : ``}
-</div>
+  const checked = state.selectedEventDocIds.has(ev._docId);
+const selMode = state.historySelectMode;
 
-          <span class="tag ${tagClass}">${label.toUpperCase()}</span>
-        </div>
-        <div class="lines">${lines}</div>
+return `
+  <div class="event ${selMode ? "selectMode" : ""} ${checked ? "isSelected" : ""}" data-evdoc="${ev._docId}">
+    ${selMode ? `<input class="evChk" type="checkbox" ${checked ? "checked" : ""} />` : ``}
+
+    <div class="eventHead">
+      <div>
+        <p class="eventTitle">${label}</p>
+        <div class="eventMeta">${fmtDT(ev.ts)}</div>
+        ${note ? `<div class="eventNote">${note}</div>` : ``}
       </div>
-    `;
+      <span class="tag ${tagClass}">${label.toUpperCase()}</span>
+    </div>
+
+    <div class="lines">${lines}</div>
+  </div>
+`;
+
   }).join("") || `<div class="eventMeta">No history yet.</div>`;
 
   $("#printHeader").textContent = `Generated: ${new Date().toLocaleString()} — Promo Stock History`;
@@ -1895,6 +1978,32 @@ const itemsHTML = visibleLines.map(l=>{
       </tr>
     `;
   }).join("") || `<tr><td colspan="4">No history yet.</td></tr>`;
+
+    // ✅ click handlers for select mode
+  if (state.historySelectMode){
+    updateSelCount();
+
+    $$("#history .event").forEach(card=>{
+      const id = card.dataset.evdoc;
+      const chk = card.querySelector(".evChk");
+      if (!id || !chk) return;
+
+      const setOne = (val)=>{
+        if (val) state.selectedEventDocIds.add(id);
+        else state.selectedEventDocIds.delete(id);
+        updateSelCount();
+        renderHistory(); // najprościej: odśwież
+      };
+
+      chk.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        setOne(chk.checked);
+      });
+
+      card.addEventListener("click", ()=>{
+        setOne(!state.selectedEventDocIds.has(id));
+      });
+    });
 }
 
 function downloadCSV(){
@@ -1924,6 +2033,33 @@ function downloadCSV(){
   URL.revokeObjectURL(url);
 }
 
+async function clearAllEvents(){
+  const ok = confirm("This will permanently delete ALL history (events). Continue?");
+  if (!ok) return;
+
+  const { collection, getDocs, query, limit, deleteDoc, doc } = window.fb;
+  const db = window.db;
+
+  let total = 0;
+
+  // Firestore nie ma "delete collection" – kasujemy dokumenty partiami
+  while (true){
+    const snap = await getDocs(query(collection(db, "events"), limit(500)));
+    if (snap.empty) break;
+
+    const deletions = [];
+    snap.forEach(d => {
+      deletions.push(deleteDoc(doc(db, "events", d.id)));
+    });
+
+    await Promise.all(deletions);
+    total += deletions.length;
+  }
+
+  flash(`History cleared (${total} events deleted).`);
+}
+
+  
 function adminUnlock(){
   if (state.adminUnlocked) return true;
   const pin = prompt("Admin PIN (offline mock):", "");
@@ -1974,6 +2110,18 @@ const waitFb = setInterval(() => {
 }, 50);
 
 
+
+$("#delModeBtn").addEventListener("click", ()=> setHistorySelectMode(!state.historySelectMode));
+$("#delCancelBtn").addEventListener("click", ()=> setHistorySelectMode(false));
+$("#selAllBtn").addEventListener("click", ()=>{
+  // zaznacz wszystkie widoczne (po filtrach)
+  $$("#history .event").forEach(e=> state.selectedEventDocIds.add(e.dataset.evdoc));
+  updateSelCount();
+  renderHistory();
+});
+$("#delSelBtn").addEventListener("click", deleteSelectedEvents);
+
+  
   $("#btnKiosk").addEventListener("click", ()=>setMode("kiosk"));
   $("#btnAdmin").addEventListener("click", ()=>setMode("admin"));
 
@@ -2009,6 +2157,7 @@ const waitFb = setInterval(() => {
   
 </body>
 </html>
+
 
 
 
