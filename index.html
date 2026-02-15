@@ -1791,27 +1791,32 @@ row.classList.remove("hasDelivery");
     });
 
     row.querySelector("[data-del]").addEventListener("click", ()=>{
-      const itemName = it.name;
+      row.querySelector("[data-del]").addEventListener("click", async ()=>{
+  const { deleteDoc, doc, addDoc, collection } = window.fb;
+  const db = window.db;
 
-      const confirmEv = { id: crypto.randomUUID(), type:"item_deleted", ts: nowISO(), note:`Delete item: ${itemName}`, lines:[{ itemId: it.id, qty: 0 }] };
+  const itemName = it.name;
 
-      const chips = `<span class="line">${itemName}<span class="delta">delete</span></span>`;
-      const noteLine = `${fmtDT(confirmEv.ts)} • Delete this item from inventory?`;
+  const ok = confirm(`Delete "${itemName}" permanently?`);
+  if (!ok) return;
 
-      const snapshot = JSON.parse(JSON.stringify(it));
-      const snapshotIndex = state.items.findIndex(x=>x.id===it.id);
+  // 1️⃣ usuń item z Firestore
+  await deleteDoc(doc(db, "items", it.id));
 
-      state.items = state.items.filter(x=>x.id!==it.id);
-      
-      state.events.push(confirmEv);
+  // 2️⃣ zapisz event do Firestore (normalnie jak taken/restocked)
+  const ev = {
+    id: crypto.randomUUID(),
+    type: "item_deleted",
+    ts: nowISO(),
+    note: `Delete item: ${itemName}`,
+    lines: [{ itemId: it.id, qty: 0 }]
+  };
 
-      renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
+  await addDoc(collection(db, "events"), ev);
 
-      startUndoWindow(confirmEv, ()=>{
-  state.items.splice(snapshotIndex < 0 ? state.items.length : snapshotIndex, 0, snapshot);
-  state.events = state.events.filter(e=>e.id!==confirmEv.id);
-  renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
+  flash(`"${itemName}" deleted.`);
 });
+
 
 
       openModal({ tagText:"DELETE", tagClass:"taken", linesHTML:chips, noteText:noteLine, canUndo:true, onUndo:state.undo.onUndo });
@@ -2254,6 +2259,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
