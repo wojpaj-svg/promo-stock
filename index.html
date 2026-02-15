@@ -1531,6 +1531,68 @@ function openModal({ tagText, tagClass, linesHTML, tsText, noteText, canUndo, on
   $("#modalWrap").setAttribute("aria-hidden","false");
 }
 
+function confirmModal({
+  tagText = "CONFIRM",
+  tagClass = "taken",
+  tsText = "",
+  noteText = "",
+  linesHTML = "",
+  okText = "OK",
+  cancelText = "Cancel"
+}){
+  return new Promise((resolve)=>{
+    // ustaw treść jak w openModal
+    $("#mTag").textContent = tagText;
+    $("#mTag").className = "tag " + tagClass;
+
+    $("#mDate").textContent = (tsText || "").trim() || "—";
+
+    const note = (noteText || "").trim();
+    const mNote = $("#mNote");
+    if (note){
+      mNote.style.display = "";
+      mNote.textContent = note;
+    } else {
+      mNote.style.display = "none";
+      mNote.textContent = "";
+    }
+
+    $("#mLines").innerHTML = linesHTML || "";
+
+    // ✅ tu robimy z przycisków: Cancel / OK
+    const btnCancel = $("#mUndo");
+    const btnOk = $("#mSaved");
+
+    btnCancel.disabled = false;
+    btnOk.disabled = false;
+
+    btnCancel.textContent = cancelText;
+    btnOk.textContent = okText;
+
+    const cleanup = ()=>{
+      // przywróć napisy dla normalnych modalów (Undo/Done)
+      btnCancel.textContent = "Undo";
+      btnOk.textContent = "Done";
+      btnCancel.onclick = null;
+      btnOk.onclick = null;
+    };
+
+    btnCancel.onclick = ()=>{
+      cleanup();
+      closeModal();
+      resolve(false);
+    };
+
+    btnOk.onclick = ()=>{
+      cleanup();
+      closeModal();
+      resolve(true);
+    };
+
+    $("#modalWrap").classList.add("show");
+    $("#modalWrap").setAttribute("aria-hidden","false");
+  });
+}
 
 
 function closeModal(){
@@ -1988,8 +2050,17 @@ async function deleteSelectedEvents(){
   const n = state.selectedEventDocIds.size;
   if (!n){ flash("Select events first."); return; }
 
-  const ok = confirm(`Archive ${n} selected event(s)? They will disappear from History but stay in Firebase (events_archive).`);
-  if (!ok) return;
+ const ok = await confirmModal({
+  tagText: "ARCHIVE EVENTS",
+  tagClass: "taken",
+  tsText: "",
+  noteText: `Archive ${n} selected event(s)? They will disappear from History but stay in Firebase (events_archive).`,
+  linesHTML: `<span class="line">${n} event(s)<span class="delta">archive</span></span>`,
+  okText: "Archive",
+  cancelText: "Cancel"
+});
+if (!ok) return;
+
 
   const ids = [...state.selectedEventDocIds];
 
@@ -2177,8 +2248,16 @@ function downloadCSV(){
 }
 
 async function clearAllEvents(){
-  const ok = confirm("This will archive ALL history (events) and clear it from the app. Continue?");
-  if (!ok) return;
+  const ok = await confirmModal({
+  tagText: "ARCHIVE ALL HISTORY",
+  tagClass: "taken",
+  noteText: "This will archive ALL history (events) and clear it from the app. Continue?",
+  linesHTML: `<span class="line">ALL events<span class="delta">archive</span></span>`,
+  okText: "Archive all",
+  cancelText: "Cancel"
+});
+if (!ok) return;
+
 
   const { collection, getDocs, query, limit } = window.fb;
   const db = window.db;
@@ -2300,6 +2379,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
