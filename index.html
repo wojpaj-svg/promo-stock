@@ -1660,7 +1660,7 @@ function bulkAddDeliveries(){
 
 }
 
-function addNewItem(){
+async function addNewItem(){
   const name = $("#newName").value.trim();
   if (!name){ flash("Enter item name."); return; }
 
@@ -1686,30 +1686,37 @@ function addNewItem(){
     order
   });
 
-  await addDoc(collection(db, "events"), {
-    id: crypto.randomUUID(),
-    type:"item_added",
-    ts: nowISO(),
-    note:`Item added: ${name}`,
-    lines:[{ itemId:id, qty:0 }]
-  });
+ const ev = {
+  id: crypto.randomUUID(),
+  type: "item_added",
+  ts: nowISO(),
+  note: `Item added: ${name}`,
+  lines: [{ itemId: id, qty: 0 }]
+};
 
-  $("#newName").value = "";
-  $("#newStock").value = "0";
+await addDoc(collection(db, "events"), ev);
 
+$("#newName").value = "";
+$("#newStock").value = "0";
 
-  const chips = `<span class="line">${name}<span class="delta">added</span></span>`;
-  const noteLine = `${fmtDT(ev.ts)} • Added to inventory (also appears in Kiosk)`;
+const chips = `<span class="line">${name}<span class="delta">added</span></span>`;
+const noteLine = `${fmtDT(ev.ts)} • Added to inventory (also appears in Kiosk)`;
 
-  startUndoWindow(ev, ()=>{
-    state.items = state.items.filter(x=>x.id!==id);
-    state.events = state.events.filter(x=>x.id!==ev.id);
-    state.events = state.events.filter(e=>!e.lines?.some(l=>l.itemId===id));
-    renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
-  });
+startUndoWindow(ev, ()=>{
+  // tymczasowo: tylko UI (Firestore item już dodany)
+  // docelowo: undo powinno usuwać doc z Firestore (items/id) + event z events
+  renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
+});
 
-  openModal({ tagText:"ITEM ADDED", tagClass:"restocked", linesHTML:chips, noteText:noteLine, canUndo:true, onUndo:state.undo.onUndo });
-}
+openModal({
+  tagText:"ITEM ADDED",
+  tagClass:"restocked",
+  linesHTML:chips,
+  noteText:noteLine,
+  canUndo:true,
+  onUndo:state.undo.onUndo
+});
+
 
 function renderHistoryFilters(){
   const sel = $("#filterItem");
@@ -1924,5 +1931,6 @@ function setAdminTab(tab){
   
 </body>
 </html>
+
 
 
