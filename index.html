@@ -1791,19 +1791,18 @@ row.classList.remove("hasDelivery");
     });
 
     row.querySelector("[data-del]").addEventListener("click", ()=>{
-      row.querySelector("[data-del]").addEventListener("click", async ()=>{
+     row.querySelector("[data-del]").addEventListener("click", async ()=>{
   const { deleteDoc, doc, addDoc, collection } = window.fb;
   const db = window.db;
 
   const itemName = it.name;
-
   const ok = confirm(`Delete "${itemName}" permanently?`);
   if (!ok) return;
 
-  // 1️⃣ usuń item z Firestore
+  // usuń item
   await deleteDoc(doc(db, "items", it.id));
 
-  // 2️⃣ zapisz event do Firestore (normalnie jak taken/restocked)
+  // zapisz event
   const ev = {
     id: crypto.randomUUID(),
     type: "item_deleted",
@@ -1816,6 +1815,7 @@ row.classList.remove("hasDelivery");
 
   flash(`"${itemName}" deleted.`);
 });
+
 
 
 
@@ -2259,6 +2259,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
