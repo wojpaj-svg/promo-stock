@@ -989,7 +989,11 @@ letter-spacing:.2px;
       background:#f3f6f9;
       font-weight:900;
     }
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;   /* ✅ NIE ŁAMIE daty/godziny */
+}
+
     .itemsCell{white-space:normal;}
 .itemsGrid{
   display:grid;
@@ -1139,10 +1143,11 @@ letter-spacing:.2px;
           <table class="printTable" id="printTable">
             <thead>
               <tr>
-                <th style="width:160px;">Date / Time</th>
-                <th style="width:110px;">Type</th>
-                <th>Note</th>
-                <th style="width:260px;">Items</th>
+               <th style="width:190px;">Date / Time</th>
+<th style="width:95px;">Type</th>
+<th>Note</th>
+<th style="width:220px;">Items</th>
+
               </tr>
             </thead>
             <tbody id="printTbody"></tbody>
@@ -1342,8 +1347,16 @@ function startFirestore(){
 
 function nowISO(){ return new Date().toISOString(); }
 function fmtDT(iso){
-  return new Date(iso).toLocaleString(undefined, { year:"numeric", month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+  return new Date(iso).toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
 }
+
 function fmtType(t){
   if (t==="taken") return "Taken";
   if (t==="restocked") return "Restocked";
@@ -2241,6 +2254,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
