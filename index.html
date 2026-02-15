@@ -38,13 +38,22 @@
       margin:20px auto;
       padding:0 14px 30px;
     }
-    header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:14px;
-    }
+  header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+
+  margin:0 0 16px;
+  padding:14px 14px;
+
+  border-radius:22px;
+  border:1px solid rgba(125,180,66,.28);
+  background: linear-gradient(90deg, rgba(95,143,46,.92), rgba(125,180,66,.82));
+  color:#fff;
+  box-shadow: 0 16px 40px rgba(0,0,0,.08);
+}
+
     .brand{display:flex; align-items:center; gap:12px}
     .logo{
   width:42px;height:42px;border-radius:14px;
@@ -62,36 +71,43 @@
   background: linear-gradient(135deg,var(--accent),var(--accent2));
 }
 
-    h1{font-size:18px;margin:0}
-    .sub{color:var(--muted); font-size:12.5px; margin-top:2px}
+    h1{font-size:18px;margin:0; letter-spacing:.6px; text-transform:uppercase; color:#fff;}
+.sub{color: rgba(255,255,255,.82); font-size:12.5px; margin-top:2px}
+
 
     /* Top toggle */
-    .tabs{
-      display:flex;
-      gap:8px;
-      background:rgba(255,255,255,.7);
-      padding:6px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      width:max-content;
-      box-shadow: 0 10px 25px rgba(0,0,0,.05);
-    }
-    .tab{
-      border:0;
-      background:transparent;
-      padding:10px 14px;
-      border-radius:999px;
-      cursor:pointer;
-      font-weight:950;
-      font-size:13px;
-      color:var(--muted);
-    }
-.tab.active{
-  background:#fff;
-  color: var(--text);
-  border:1px solid var(--border);
-  box-shadow: 0 8px 20px rgba(0,0,0,.06);
+  .tabs{
+  display:flex;
+  gap:8px;
+
+  background: rgba(255,255,255,.16);
+  padding:6px;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  width:max-content;
+
+  box-shadow:none;
+  backdrop-filter: blur(8px);
 }
+
+    .tab{
+  border:0;
+  background:transparent;
+  padding:10px 14px;
+  border-radius:999px;
+  cursor:pointer;
+  font-weight:950;
+  font-size:13px;
+
+  color: rgba(255,255,255,.88);
+}
+.tab.active{
+  background: rgba(255,255,255,.92);
+  color: #1b1f24;
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+}
+
 
 
 
@@ -165,16 +181,20 @@ height:35px;          /* <- dodaj */
 
 
     .btn:active{transform: translateY(1px)}
-   .primary{
-  background: rgba(125,180,66,.18);       /* subtelny zielony, nie biały */
-  border: 1px solid rgba(125,180,66,.38); /* delikatna ramka */
-  color: #2a3a1f;                          /* mniej czarny */
-  box-shadow: 0 8px 18px rgba(0,0,0,.04);
+.primary{
+  background: linear-gradient(135deg, rgba(95,143,46,.95), rgba(125,180,66,.90));
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(0,0,0,.12);
 }
 .primary:hover{
-  background: rgba(125,180,66,.24);
-  border-color: rgba(125,180,66,.48);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(0,0,0,.16);
 }
+.primary:active{
+  transform: translateY(0px);
+}
+
 
     .ghost{
   background:#fff;                 /* wygląda jak normalny button */
@@ -1021,7 +1041,41 @@ letter-spacing:.2px;
       .printHeader, .printTableWrap { display:block !important; }
     }
 
-  
+
+/* =========================
+   PORTFOLIO PUNCH (micro-interactions)
+========================= */
+
+.card{
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.card:hover{
+  box-shadow: 0 18px 55px rgba(0,0,0,.10);
+}
+
+.item, .adminRow, .event{
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.item:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0,0,0,.08);
+  border-color: rgba(125,180,66,.40);
+}
+
+.adminRow:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+  border-color: rgba(125,180,66,.35);
+}
+
+.event:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+  border-color: rgba(125,180,66,.30);
+}
+
+    
   </style>
 </head>
 
@@ -2379,6 +2433,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
