@@ -1790,28 +1790,36 @@ row.classList.remove("hasDelivery");
 
     });
 
-    row.querySelector("[data-del]").addEventListener("click", ()=>{
-      const itemName = it.name;
+   row.querySelector("[data-del]").addEventListener("click", async ()=>{
+  const { doc, deleteDoc, addDoc, collection } = window.fb;
+  const db = window.db;
 
-      const confirmEv = { id: crypto.randomUUID(), type:"item_deleted", ts: nowISO(), note:`Delete item: ${itemName}`, lines:[{ itemId: it.id, qty: 0 }] };
+  const itemName = it.name;
+  const ok = confirm(`Delete item "${itemName}" permanently?`);
+  if (!ok) return;
 
-      const chips = `<span class="line">${itemName}<span class="delta">delete</span></span>`;
-      const noteLine = `${fmtDT(confirmEv.ts)} • Delete this item from inventory?`;
+  try{
+    // 1) usuń item z Firestore
+    await deleteDoc(doc(db, "items", it.id));
 
-      const snapshot = JSON.parse(JSON.stringify(it));
-      const snapshotIndex = state.items.findIndex(x=>x.id===it.id);
+    // 2) zapisz event do historii w Firestore
+    const ev = {
+      id: crypto.randomUUID(),
+      type: "item_deleted",
+      ts: nowISO(),
+      note: `Delete item: ${itemName}`,
+      lines: [{ itemId: it.id, qty: 0 }]
+    };
+    await addDoc(collection(db, "events"), ev);
 
-      state.items = state.items.filter(x=>x.id!==it.id);
-      
-      state.events.push(confirmEv);
-
-      renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
-
-      startUndoWindow(confirmEv, ()=>{
-  state.items.splice(snapshotIndex < 0 ? state.items.length : snapshotIndex, 0, snapshot);
-  state.events = state.events.filter(e=>e.id!==confirmEv.id);
-  renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
+    flash("Item deleted.");
+    // UI i tak się odświeży przez onSnapshot()
+  }catch(e){
+    console.error("Delete item failed:", e);
+    flash("Delete failed. Check console (permissions / rules).");
+  }
 });
+
 
 
       openModal({ tagText:"DELETE", tagClass:"taken", linesHTML:chips, noteText:noteLine, canUndo:true, onUndo:state.undo.onUndo });
@@ -1941,13 +1949,25 @@ openModal({
   renderHistory(); // przerysuj listę z checkboxami / bez
 }
 
+function sanitizeSelected(){
+  for (const id of [...state.selectedEventDocIds]){
+    if (typeof id !== "string") { state.selectedEventDocIds.delete(id); continue; }
+    const t = id.trim();
+    if (!t || t === "undefined" || t === "null") state.selectedEventDocIds.delete(id);
+  }
+}
+
 function updateSelCount(){
+  sanitizeSelected();
   $("#selCount").textContent = `${state.selectedEventDocIds.size} selected`;
 }
 
+
 async function deleteSelectedEvents(){
   // 1) weź tylko poprawne ID
-  const ids = [...state.selectedEventDocIds].filter(id => typeof id === "string" && id.trim().length > 0);
+ sanitizeSelected();
+const ids = [...state.selectedEventDocIds].filter(id => id && id.trim() && id !== "undefined" && id !== "null");
+
   const n = ids.length;
 
   if (!n){ flash("Select events first."); return; }
@@ -2043,12 +2063,14 @@ return `<span class="line">${name}<span class="delta ${deltaClass}">${delta}</sp
 
       }).join("");
 
-  const checked = state.selectedEventDocIds.has(ev._docId);
+  const evDoc = (typeof ev._docId === "string" && ev._docId.trim() && ev._docId !== "undefined") ? ev._docId : "";
+const checked = evDoc ? state.selectedEventDocIds.has(evDoc) : false;
 const selMode = state.historySelectMode;
 
 return `
-  <div class="event ${selMode ? "selectMode" : ""} ${checked ? "isSelected" : ""}" data-evdoc="${ev._docId}">
-    ${selMode ? `<input class="evChk" type="checkbox" ${checked ? "checked" : ""} />` : ``}
+  <div class="event ${selMode ? "selectMode" : ""} ${checked ? "isSelected" : ""}" data-evdoc="${evDoc}">
+    ${selMode && evDoc ? `<input class="evChk" type="checkbox" ${checked ? "checked" : ""} />` : ``}
+
 
     <div class="eventHead">
       <div>
@@ -2100,9 +2122,10 @@ const itemsHTML = visibleLines.map(l=>{
     updateSelCount();
 
     $$("#history .event").forEach(card=>{
-      const id = card.dataset.evdoc;
-      const chk = card.querySelector(".evChk");
-      if (!id || !chk) return;
+      const id = (card.dataset.evdoc || "").trim();
+const chk = card.querySelector(".evChk");
+if (!id || id === "undefined" || !chk) return;
+
 
       const setOne = (val)=>{
         if (val) state.selectedEventDocIds.add(id);
@@ -2277,6 +2300,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
