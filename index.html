@@ -1064,22 +1064,88 @@ letter-spacing:.2px;
 
   <div class="miniMsg" id="miniMsg"></div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    onSnapshot, 
+    doc, 
+    updateDoc,
+    increment,
+    setDoc,
+    deleteDoc
+  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
+    authDomain: "promo-stock.firebaseapp.com",
+    projectId: "promo-stock",
+    storageBucket: "promo-stock.firebasestorage.app",
+    messagingSenderId: "663337065636",
+    appId: "1:663337065636:web:672590dddb96f633b41a31"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.db = db;
+window.fb = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, increment, setDoc, deleteDoc };
+
+</script>
+
+  
 <script>
 const state = {
-  items: [
-    { id:"mugs", name:"Mugs", icon:"mug", stock:350, threshold:200, active:true, order:1 },
-    { id:"bags", name:"Tote bags", icon:"bag", stock:350, threshold:200, active:true, order:2 },
-    { id:"pens", name:"Pens", icon:"pen", stock:1200, threshold:200, active:true, order:3 },
-    { id:"lanyards", name:"Lanyards", icon:"lanyard", stock:500, threshold:200, active:true, order:4 },
-  ],
+  items: [],          // ✅ teraz źródłem prawdy jest Firestore
   events: [],
   undo: { timer:null, event:null, expiresAt:0, onUndo:null },
   adminUnlocked: false,
 };
 
+
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const byId = (id) => state.items.find(x => x.id === id);
+
+  // =============================
+// FIRESTORE SYNC (REALTIME)
+// =============================
+function startFirestore(){
+  const { collection, onSnapshot } = window.fb;
+  const db = window.db;
+
+  // realtime items
+  onSnapshot(collection(db, "items"), (snap)=>{
+    const items = [];
+    snap.forEach(d=>{
+      const data = d.data() || {};
+      items.push({
+        id: d.id,
+        name: data.name ?? d.id,
+        icon: data.icon ?? "box",
+        stock: Number(data.remaining ?? 0),     // ✅ mapujemy Firestore.remaining -> UI.stock
+        threshold: Number(data.threshold ?? 0),
+        active: Boolean(data.active ?? true),
+        order: Number(data.order ?? 999),
+      });
+    });
+
+    // sort
+    items.sort((a,b)=> (a.order??999) - (b.order??999));
+
+    state.items = items;
+
+    // odśwież UI
+    renderKiosk();
+    renderAdmin();
+    renderHistoryFilters();
+    renderHistory();
+  });
+}
+
 
 function nowISO(){ return new Date().toISOString(); }
 function fmtDT(iso){
@@ -1195,26 +1261,37 @@ function flash(msg){
   setTimeout(()=>el.classList.remove("show"), 1700);
 }
 
-function applyEvent(ev){
+async function applyEvent(ev){
+  // ✅ stock aktualizujemy w Firestore, a UI dostanie update z onSnapshot
+  const { doc, updateDoc, increment, addDoc, collection } = window.fb;
+  const db = window.db;
+
   if (ev.type === "taken" || ev.type === "restocked"){
-    ev.lines.forEach(l => {
-      const it = byId(l.itemId);
-      if (!it) return;
-      it.stock = Math.max(0, it.stock + l.qty);
-    });
+    await Promise.all(ev.lines.map(l=>{
+      return updateDoc(doc(db, "items", l.itemId), {
+        remaining: increment(l.qty) // taken ma u Ciebie qty ujemne
+      });
+    }));
   }
-  state.events.push(ev);
+
+  // historia do Firestore (opcjonalnie, ale polecam)
+  await addDoc(collection(db, "events"), ev);
 }
-function revertEvent(ev){
+
+async function revertEvent(ev){
+  const { doc, updateDoc, increment } = window.fb;
+  const db = window.db;
+
   if (ev.type === "taken" || ev.type === "restocked"){
-    ev.lines.forEach(l => {
-      const it = byId(l.itemId);
-      if (!it) return;
-      it.stock = Math.max(0, it.stock - l.qty);
-    });
+    await Promise.all((ev.lines || []).map(l=>{
+      return updateDoc(doc(db, "items", l.itemId), {
+        remaining: increment(-l.qty) // cofamy zmianę
+      });
+    }));
   }
-  state.events = state.events.filter(x => x.id !== ev.id);
 }
+
+
 
 function openModal({ tagText, tagClass, linesHTML, tsText, noteText, canUndo, onUndo }){
   $("#mTag").textContent = tagText;
@@ -1454,15 +1531,19 @@ function renderAdmin(){
     syncDeliveryHighlight(); // init (np. po renderze)
 
 
-    row.querySelector("[data-active]").addEventListener("change", (e)=>{
-      it.active = e.target.value === "true";
-      renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
-    });
+    row.querySelector("[data-active]").addEventListener("change", async (e)=>{
+  const { doc, updateDoc } = window.fb;
+  const db = window.db;
+  await updateDoc(doc(db, "items", id), { active: e.target.value === "true" });
+});
 
-    row.querySelector("[data-threshold]").addEventListener("change", (e)=>{
-      it.threshold = Math.max(0, parseInt(e.target.value,10)||0);
-      renderKiosk(); renderAdmin(); renderHistory();
-    });
+
+   row.querySelector("[data-threshold]").addEventListener("change", async (e)=>{
+  const { doc, updateDoc } = window.fb;
+  const db = window.db;
+  await updateDoc(doc(db, "items", id), { threshold: Math.max(0, parseInt(e.target.value,10)||0) });
+});
+
 
     row.querySelector("[data-addbtn]").addEventListener("click", ()=>{
       const inp = row.querySelector("[data-addqty]");
@@ -1593,15 +1674,29 @@ function addNewItem(){
   const order = Math.max(1, ...state.items.map(i=>i.order)) + 1;
   const newItem = { id, name, icon, stock, threshold, active:true, order };
 
-  state.items.push(newItem);
+   const { doc, setDoc, addDoc, collection } = window.fb;
+  const db = window.db;
 
-  const ev = { id: crypto.randomUUID(), type:"item_added", ts: nowISO(), note:`Item added: ${name}`, lines:[{ itemId:id, qty:0 }] };
-  state.events.push(ev);
+  await setDoc(doc(db, "items", id), {
+    name,
+    icon,
+    remaining: stock,
+    threshold,
+    active: true,
+    order
+  });
+
+  await addDoc(collection(db, "events"), {
+    id: crypto.randomUUID(),
+    type:"item_added",
+    ts: nowISO(),
+    note:`Item added: ${name}`,
+    lines:[{ itemId:id, qty:0 }]
+  });
 
   $("#newName").value = "";
   $("#newStock").value = "0";
 
-  renderKiosk(); renderAdmin(); renderHistoryFilters(); renderHistory();
 
   const chips = `<span class="line">${name}<span class="delta">added</span></span>`;
   const noteLine = `${fmtDT(ev.ts)} • Added to inventory (also appears in Kiosk)`;
@@ -1790,7 +1885,8 @@ function setAdminTab(tab){
 (function init(){
   $("#newIcon").innerHTML = ICONS.map(([k,label])=>`<option value="${k}">${label}</option>`).join("");
 
-  renderKiosk();
+    startFirestore(); // ✅ odpala realtime z Firestore
+
   setMode("kiosk");
 
   $("#btnKiosk").addEventListener("click", ()=>setMode("kiosk"));
@@ -1822,36 +1918,11 @@ function setAdminTab(tab){
 })();
 </script>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-  import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs, 
-    onSnapshot, 
-    doc, 
-    updateDoc 
-  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyC0nKNfmvD3c9ouqaa9ybiXjgkHqVHA12M",
-    authDomain: "promo-stock.firebaseapp.com",
-    projectId: "promo-stock",
-    storageBucket: "promo-stock.firebasestorage.app",
-    messagingSenderId: "663337065636",
-    appId: "1:663337065636:web:672590dddb96f633b41a31"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  window.db = db; // żeby było globalne
-  window.fb = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc };
-</script>
 
 
   
 </body>
 </html>
+
 
