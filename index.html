@@ -1946,7 +1946,10 @@ function updateSelCount(){
 }
 
 async function deleteSelectedEvents(){
-  const n = state.selectedEventDocIds.size;
+  // 1) weź tylko poprawne ID
+  const ids = [...state.selectedEventDocIds].filter(id => typeof id === "string" && id.trim().length > 0);
+  const n = ids.length;
+
   if (!n){ flash("Select events first."); return; }
 
   const ok = confirm(`Delete ${n} selected event(s) permanently?`);
@@ -1955,13 +1958,30 @@ async function deleteSelectedEvents(){
   const { deleteDoc, doc } = window.fb;
   const db = window.db;
 
-  // kasujemy z Firestore
-  await Promise.all([...state.selectedEventDocIds].map(id => deleteDoc(doc(db, "events", id))));
+  try{
+    // 2) nie all-or-nothing: usuń co się da i policz błędy
+    const results = await Promise.allSettled(ids.map(id => deleteDoc(doc(db, "events", id))));
 
-  state.selectedEventDocIds.clear();
-  updateSelCount();
-  flash("Selected events deleted.");
+    const okCount = results.filter(r => r.status === "fulfilled").length;
+    const err = results.find(r => r.status === "rejected");
+
+    // 3) odznacz tylko te, które próbowałeś usuwać
+    ids.forEach(id => state.selectedEventDocIds.delete(id));
+    updateSelCount();
+
+    if (err){
+      console.error("Delete history failed (at least one):", err.reason);
+      flash(`Deleted ${okCount}/${n}. Check console (permissions / rules).`);
+      return;
+    }
+
+    flash(`Deleted ${okCount} event(s).`);
+  }catch(e){
+    console.error("Delete history fatal error:", e);
+    flash("Delete failed. Check console.");
+  }
 }
+
 
 function renderHistoryFilters(){
   const sel = $("#filterItem");
@@ -2211,11 +2231,14 @@ const waitFb = setInterval(() => {
 $("#delModeBtn").addEventListener("click", ()=> setHistorySelectMode(!state.historySelectMode));
 $("#delCancelBtn").addEventListener("click", ()=> setHistorySelectMode(false));
 $("#selAllBtn").addEventListener("click", ()=>{
-  // zaznacz wszystkie widoczne (po filtrach)
-  $$("#history .event").forEach(e=> state.selectedEventDocIds.add(e.dataset.evdoc));
+  $$("#history .event").forEach(e=>{
+    const id = e.dataset.evdoc;
+    if (typeof id === "string" && id.trim()) state.selectedEventDocIds.add(id);
+  });
   updateSelCount();
   renderHistory();
 });
+
 $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
 
   
@@ -2254,6 +2277,7 @@ $("#delSelBtn").addEventListener("click", deleteSelectedEvents);
   
 </body>
 </html>
+
 
 
 
