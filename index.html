@@ -1347,6 +1347,12 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const byId = (id) => state.items.find(x => x.id === id);
 
+  const APP_PASSWORD = "Labale";
+
+function checkPassword(message = "Enter password:"){
+  const pin = prompt(message, "");
+  return pin === APP_PASSWORD;
+}
 
 function guessIconForName(name){
   const n = String(name||"").toLowerCase();
@@ -1800,6 +1806,10 @@ function submitTaken(){
   const lines = kioskSelectionLines();
   if (!lines.length){ flash("Select quantities first."); return; }
 
+  if (!checkPassword("Password required to take items:")){
+  flash("Wrong password.");
+  return;
+}
   const ev = {
     id: crypto.randomUUID(),
     type: "taken",
@@ -2384,8 +2394,12 @@ if (!ok) return;
   
 function adminUnlock(){
   if (state.adminUnlocked) return true;
-  const pin = prompt("Admin PIN (offline mock):", "");
-  if (pin === "InnoRenew"){ state.adminUnlocked = true; return true; }
+
+  if (checkPassword("Admin password:")){
+    state.adminUnlocked = true;
+    return true;
+  }
+
   return false;
 }
 
